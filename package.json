@@ -4,7 +4,7 @@
   "description": "Robot for Wechat personal chat",
   "main": "./lib/weixinbot.js",
   "scripts": {
-    "compile": "babel --plugins \"transform-runtime\" ./src --ignore __test__ --out-dir ./lib",
+    "compile": "./node_modules/.bin/babel --plugins \"transform-runtime\" ./src --ignore __test__ --out-dir ./lib",
     "pub": "npm run compile && npm publish",
     "test": "mocha $npm_package_options_mocha",
     "test-watch": "npm run test -- --watch"
@@ -25,6 +25,7 @@
     "tough-cookie-filestore": "0.0.1"
   },
   "devDependencies": {
+    "babel-cli": "^6.9.0",
     "babel-core": "^6.4.5",
     "babel-eslint": "^4.1.6",
     "babel-plugin-transform-runtime": "^6.4.3",
