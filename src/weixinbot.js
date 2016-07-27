@@ -64,10 +64,10 @@ class WeixinBot extends EventEmitter {
 
     // transporter for send qrcode image url
     this.transporter = nodemailer.createTransport(options.mailOpts || {
-      service: 'QQex',
+      service: 'qq',
       auth: {
-        user: 'weixinbot@feit.me',
-        pass: 'l53y$cf^7m3wth%^',
+        user: 'no_reply@shaozi.info',
+        pass: 'shaozi12345678',
       },
     });
 
@@ -415,6 +415,7 @@ class WeixinBot extends EventEmitter {
   async fetchTickets() {
     let data;
     try {
+      debug('tickets', this.redirectUri);
       data = await rp(this.redirectUri);
     } catch (e) {
       debug('fetch tickets network error', e);
@@ -424,7 +425,10 @@ class WeixinBot extends EventEmitter {
     }
 
     if (!/<ret>0<\/ret>/.test(data)) {
-      throw new Error('Get skey failed, restart login');
+        debug('fetch tickets network error', data);
+      //throw new Error('Get skey failed, restart login');
+        await this.fetchTickets();
+        return;
     }
 
     // const retM = data.match(/<ret>(.*)<\/ret>/);
