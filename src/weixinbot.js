@@ -654,7 +654,7 @@ class WeixinBot extends EventEmitter {
           新消息
           ${msg.Member.RemarkName || msg.Member.NickName}: ${msg.Content}
       `);
-            this.emit('friend', msg);
+            
         } else {
             //当前用户还不是你的好友
             debug(`
@@ -662,6 +662,7 @@ class WeixinBot extends EventEmitter {
           ${msg.FromUserName}: ${msg.Content}
       `);
         }
+        this.emit('friend', msg);
 
         // if (msg.MsgType === CODES.MSGTYPE_SYSNOTICE) {
         //   return;
