@@ -31,10 +31,6 @@ try {
     jar = RequestPromise.jar();
 }
 
-function timeout(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 const rp = RequestPromise.defaults({
     headers: {
         'Accept': 'application/json, text/plain, */*',
@@ -67,6 +63,7 @@ class WeixinBot extends EventEmitter {
         super();
 
         // transporter for send qrcode image url
+        // 请不要依赖这个默认提供的邮件账户！。
         this.transporter = nodemailer.createTransport(options.mailOpts || {
                 service: 'qq',
                 auth: {
@@ -120,7 +117,7 @@ class WeixinBot extends EventEmitter {
         try {
             this.uuid = await this.fetchUUID();
         } catch (e) {
-            debug('fetch uuid error', e);
+            debug('fetch uuid error', '');
             this.run();
             return;
         }
@@ -289,6 +286,7 @@ class WeixinBot extends EventEmitter {
     async webwxsync() {
         let data;
         try {
+            debug('webwxsync', URLS.API_webwxsync);
             data = await rp({
                 uri: URLS.API_webwxsync,
                 method: 'POST',
@@ -304,7 +302,7 @@ class WeixinBot extends EventEmitter {
                 },
             });
         } catch (e) {
-            debug('webwxsync network error', e);
+            debug('webwxsync network error', '');
             // network error retry
             await this.webwxsync();
             return;
@@ -333,7 +331,7 @@ class WeixinBot extends EventEmitter {
                     timeout: 35e3,
                 });
             } catch (e) {
-                debug('lookupSyncCheckHost network error', e);
+                debug('lookupSyncCheckHost network error', '');
                 // network error retry
                 await this.lookupSyncCheckHost();
                 return;
@@ -347,6 +345,7 @@ class WeixinBot extends EventEmitter {
     async syncCheck() {
         let data;
         try {
+            debug('synccheck', URLS.API_synccheck);
             data = await rp({
                 uri: URLS.API_synccheck,
                 qs: {
@@ -360,7 +359,7 @@ class WeixinBot extends EventEmitter {
                 timeout: 35e3,
             });
         } catch (e) {
-            debug('synccheck network error', e);
+            debug('synccheck network error', 'error');
             // network error retry
             return await this.syncCheck();
         }
@@ -368,12 +367,15 @@ class WeixinBot extends EventEmitter {
         const retcode = data.match(/retcode:"(\d+)"/)[1];
         const selector = data.match(/selector:"(\d+)"/)[1];
 
+        debug('synccheck success', retcode + " " + selector);
+
         return {retcode, selector};
     }
 
     async notifyMobile() {
         let data;
         try {
+            debug('start notify mobile network', URLS.API_webwxstatusnotify);
             data = await rp({
                 uri: URLS.API_webwxstatusnotify,
                 method: 'POST',
@@ -387,7 +389,7 @@ class WeixinBot extends EventEmitter {
                 },
             });
         } catch (e) {
-            debug('notify mobile network error', e);
+            debug('notify mobile network error', 'error');
             // network error retry
             await this.notifyMobile();
             return;
@@ -403,7 +405,7 @@ class WeixinBot extends EventEmitter {
         try {
             data = await rp(URLS.API_jsLogin);
         } catch (e) {
-            debug('fetch uuid network error', e);
+            debug('fetch uuid network error', '');
             // network error retry
             return await this.fetchUUID();
         }
@@ -419,22 +421,16 @@ class WeixinBot extends EventEmitter {
     async fetchTickets() {
         let data;
         try {
-            debug('tickets', this.redirectUri);
             data = await rp(this.redirectUri);
         } catch (e) {
-            debug('fetch tickets network error', e);
+            debug('fetch tickets network error', '');
             // network error, retry
-            await timeout(3000);
             await this.fetchTickets();
             return;
         }
 
         if (!/<ret>0<\/ret>/.test(data)) {
-            debug('fetch tickets network error', data);
-            //throw new Error('Get skey failed, restart login');
-            await timeout(3000);
-            await this.fetchTickets();
-            return;
+            throw new Error('Get skey failed, restart login');
         }
 
         // const retM = data.match(/<ret>(.*)<\/ret>/);
@@ -477,7 +473,7 @@ class WeixinBot extends EventEmitter {
                 },
             });
         } catch (e) {
-            debug('fetch contact network error', e);
+            debug('fetch contact network error', '');
             // network error retry
             await this.fetchContact();
             return;
@@ -549,7 +545,7 @@ class WeixinBot extends EventEmitter {
                 },
             });
         } catch (e) {
-            debug('fetch batchgetcontact network error', e);
+            debug('fetch batchgetcontact network error', '');
             // network error retry
             await this.fetchBatchgetContact(groupIds);
             return;
@@ -603,7 +599,7 @@ class WeixinBot extends EventEmitter {
         try {
             await this.fetchBatchgetContact([groupId]);
         } catch (e) {
-            debug('fetchBatchgetContact error', e);
+            debug('fetchBatchgetContact error', '');
             return null;
         }
 
@@ -623,7 +619,7 @@ class WeixinBot extends EventEmitter {
         try {
             await this.fetchBatchgetContact([groupId]);
         } catch (e) {
-            debug('fetchBatchgetContact error', e);
+            debug('fetchBatchgetContact error', '');
             return null;
         }
 
@@ -639,10 +635,7 @@ class WeixinBot extends EventEmitter {
             msg.Group = await this.getGroup(msg.FromUserName);
             msg.Content = msg.Content.replace(/^(@[a-zA-Z0-9]+|[a-zA-Z0-9_-]+):<br\/>/, '');
 
-            debug(`
-        来自群 ${msg.Group.NickName} 的消息
-        ${msg.GroupMember.DisplayName || msg.GroupMember.NickName}: ${msg.Content}
-      `);
+            debug(`来自群 ${msg.Group.NickName} 的消息 ${msg.GroupMember.DisplayName || msg.GroupMember.NickName}: ${msg.Content}`);
 
             this.emit('group', msg);
             return;
@@ -650,20 +643,13 @@ class WeixinBot extends EventEmitter {
 
         msg.Member = await this.getMember(msg.FromUserName);
         if (msg.Member) {
-            debug(`
-          新消息
-          ${msg.Member.RemarkName || msg.Member.NickName}: ${msg.Content}
-      `);
-            
-        } else {
-            //当前用户还不是你的好友
-            debug(`
-          新消息
-          ${msg.FromUserName}: ${msg.Content}
-      `);
+            debug(`新消息 ${msg.Member.RemarkName || msg.Member.NickName}: ${msg.Content}`);
         }
-        this.emit('friend', msg);
+        else {
+            debug(`新消息 ${msg.FromUserName}: ${msg.Content}`);
+        }
 
+        this.emit('friend', msg);
         // if (msg.MsgType === CODES.MSGTYPE_SYSNOTICE) {
         //   return;
         // }
@@ -737,7 +723,7 @@ class WeixinBot extends EventEmitter {
 
             callback();
         }).catch((e) => {
-            debug('send text network error', e);
+            debug('send text network error', '');
             // network error, retry
             this.sendText(to, content, callback);
             return;
